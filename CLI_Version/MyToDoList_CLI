@@ -1,0 +1,252 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+
+class TaskItem
+{
+    public string Title { get; set; }
+    public string Description { get; set; } = "";
+    public bool Completed { get; set; } = false;
+}
+
+class Program
+{
+    static List<TaskItem> tasks = new List<TaskItem>();
+    static string saveFilePath = "tasks.json";
+
+    static void Main()
+    {
+        LoadTasks();
+
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine("== TO-DO LIST ==");
+            Console.WriteLine("1. View Tasks");
+            Console.WriteLine("2. Add Task");
+            Console.WriteLine("3. Check Task");
+            Console.WriteLine("4. Remove Task");
+            Console.WriteLine("5. Exit");
+            Console.Write("Choose an option: ");
+
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    ViewTasks();
+                    break;
+                case "2":
+                    AddTask();
+                    break;
+                case "3":
+                    CheckTask();
+                    break;
+                case "4":
+                    RemoveTask();
+                    break;
+                case "5":
+                    SaveTasks();
+                    return;
+                default:
+                    Console.WriteLine("Invalid option.");
+                    Console.ReadKey();
+                    break;
+            }
+        }
+    }
+
+    static void ViewTasks()
+    {
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine("== TASKS ==");
+
+            if (tasks.Count == 0)
+            {
+                Console.WriteLine("No tasks.");
+                Console.WriteLine("\nPress any key to return...");
+                Console.ReadKey();
+                return;
+            }
+            else
+            {
+                for (int i = 0; i < tasks.Count; i++)
+                {
+                    string status = tasks[i].Completed ? "[COMPLETED]" : "[IN PROGRESS]";
+                    Console.WriteLine($"{i + 1}. {status} {tasks[i].Title}");
+                    Console.WriteLine($"                  {tasks[i].Description}");
+                }
+
+                Console.WriteLine("\nChoose a task number to view/add description or press E to return...");
+                var keyInfo = Console.ReadKey();
+
+                if (keyInfo.Key == ConsoleKey.E)
+                    return;
+
+                if (char.IsDigit(keyInfo.KeyChar))
+                {
+                    int selectedIndex = int.Parse(keyInfo.KeyChar.ToString()) - 1;
+                    if (selectedIndex >= 0 && selectedIndex < tasks.Count)
+                    {
+                        AddTaskDescription(tasks[selectedIndex]);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    static void AddTask()
+    {
+        Console.Clear();
+        Console.Write("Enter task title: ");
+        string title = Console.ReadLine();
+
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            TaskItem task = new TaskItem { Title = title };
+            tasks.Add(task);
+            Console.WriteLine("Task added!");
+        }
+        else
+        {
+            Console.WriteLine("Task cannot be empty.");
+        }
+
+        Console.WriteLine("\nPress any key to return...");
+        Console.ReadKey();
+    }
+
+    static void RemoveTask()
+    {
+        Console.Clear();
+        Console.WriteLine("== REMOVE TASK ==");
+
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks to remove.");
+        }
+        else
+        {
+            for (int i = 0; i < tasks.Count; i++)
+            {
+                string status = tasks[i].Completed ? "[COMPLETED]" : "[IN PROGRESS]";
+                Console.WriteLine($"{i + 1}. {status} {tasks[i].Title}");
+            }
+
+            Console.Write("\nEnter the number of the task to remove: ");
+            if (int.TryParse(Console.ReadLine(), out int index))
+            {
+                if (index >= 1 && index <= tasks.Count)
+                {
+                    tasks.RemoveAt(index - 1);
+                    Console.WriteLine("Task removed!");
+                }
+                else
+                {
+                    Console.WriteLine("Invalid task number.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input.");
+            }
+        }
+
+        Console.WriteLine("\nPress any key to return...");
+        Console.ReadKey();
+    }
+
+    static void AddTaskDescription(TaskItem task)
+    {
+        Console.Clear();
+        Console.WriteLine($"{task.Title}");
+        Console.WriteLine($"{task.Description}");
+        Console.Write("\nEnter new description (leave empty to keep current): ");
+        string desc = Console.ReadLine();
+
+        if (!string.IsNullOrWhiteSpace(desc))
+        {
+            task.Description = desc;
+            Console.WriteLine("Description updated!");
+        }
+        else
+        {
+            Console.WriteLine("Description not changed.");
+        }
+
+        Console.WriteLine("\nPress any key to return to task list...");
+        Console.ReadKey();
+    }
+
+    static void CheckTask()
+    {
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine("== CHECK/UNCHECK TASK ==");
+
+            if (tasks.Count == 0)
+            {
+                Console.WriteLine("No tasks available.");
+                Console.WriteLine("\nPress any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            for (int i = 0; i < tasks.Count; i++)
+            {
+                string status = tasks[i].Completed ? "[COMPLETED]" : "[IN PROGRESS]";
+                Console.WriteLine($"{i + 1}. {status} {tasks[i].Title}");
+            }
+
+            Console.WriteLine("\nEnter the number of the task to toggle or press E to return...");
+            var key = Console.ReadKey();
+
+            if (key.Key == ConsoleKey.E)
+                return;
+
+            if (char.IsDigit(key.KeyChar))
+            {
+                int index = int.Parse(key.KeyChar.ToString()) - 1;
+
+                if (index >= 0 && index < tasks.Count)
+                {
+                    tasks[index].Completed = !tasks[index].Completed;
+                }
+            }
+        }
+    }
+
+    static void SaveTasks()
+    {
+        try
+        {
+            string json = JsonSerializer.Serialize(tasks, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(saveFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error saving tasks: " + ex.Message);
+        }
+    }
+
+    static void LoadTasks()
+    {
+        try
+        {
+            if (File.Exists(saveFilePath))
+            {
+                string json = File.ReadAllText(saveFilePath);
+                tasks = JsonSerializer.Deserialize<List<TaskItem>>(json) ?? new List<TaskItem>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error loading tasks: " + ex.Message);
+        }
+    }
+}
